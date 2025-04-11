@@ -1,0 +1,134 @@
+import json
+import pymysql
+
+# Replace these with your real RDS credentials
+DB_HOST = "your-rds-endpoint.amazonaws.com"
+DB_USER = "admin"
+DB_PASSWORD = 'urpwrd_silly'
+DB_NAME = "lambda_demo_db"
+DB_PORT = 3306
+
+def calculate_metrics(seq):
+    seq = seq.upper()
+    length = len(seq)
+    if length == 0:
+        return None
+
+    a = seq.count('A')
+    t = seq.count('T')
+    g = seq.count('G')
+    c = seq.count('C')
+
+    gc_content = (g + c) / length * 100
+    melting_temp = (a + t) * 2 + (g + c) * 4  # Simple Wallace rule
+    molecular_weight = length * 330  # ~330 g/mol per base
+
+    return {
+        'adenine_pct': a / length * 100,
+        'guanine_pct': g / length * 100,
+        'cytosine_pct': c / length * 100,
+        'thymine_pct': t / length * 100,
+        'gc_content': gc_content,
+        'melting_temp': melting_temp,
+        'length': length,
+        'molecular_weight': molecular_weight
+    }
+
+def lambda_handler(event, context):
+    print("🚀 Lambda 2 triggered!")
+    print("📥 Event payload:")
+    print(json.dumps(event, indent=2))
+
+    try:
+        payload = event.get('payload', {})
+        filename = payload.get('filename', 'unknown')
+        records = payload.get('records', [])
+        print(f"📁 Processing file: {filename}, with {len(records)} records")
+
+        # Connect to RDS
+        print("🔌 Connecting to RDS...")
+        conn = pymysql.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            db=DB_NAME,
+            port=DB_PORT,
+            connect_timeout=10
+        )
+        print("✅ RDS connection successful.")
+
+        with conn.cursor() as cursor:
+            print("🛠️ Ensuring table exists...")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS sequence_metrics (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    sample_name VARCHAR(255),
+                    adenine_pct FLOAT,
+                    guanine_pct FLOAT,
+                    cytosine_pct FLOAT,
+                    thymine_pct FLOAT,
+                    gc_content FLOAT,
+                    melting_temp FLOAT,
+                    length INT,
+                    molecular_weight FLOAT
+                );
+            """)
+            conn.commit()
+            print("✅ Table check/creation complete.")
+
+            for idx, record in enumerate(records):
+                name = record['header']
+                seq = record['sequence']
+                metrics = calculate_metrics(seq)
+
+                print(f"📊 Record {idx+1}: {name}")
+                print(f"🧬 Sequence: {seq}")
+                print(f"📈 Metrics: {metrics}")
+
+                if metrics:
+                    cursor.execute("""
+                        INSERT INTO sequence_metrics (
+                            sample_name, adenine_pct, guanine_pct,
+                            cytosine_pct, thymine_pct, gc_content,
+                            melting_temp, length, molecular_weight
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        name,
+                        metrics['adenine_pct'],
+                        metrics['guanine_pct'],
+                        metrics['cytosine_pct'],
+                        metrics['thymine_pct'],
+                        metrics['gc_content'],
+                        metrics['melting_temp'],
+                        metrics['length'],
+                        metrics['molecular_weight']
+                    ))
+                    print(f"✅ Inserted record {idx+1}")
+            conn.commit()
+            print("💾 All records committed.")
+
+            # 🕵️‍♂️ Debug: Print table contents
+            print("📋 Fetching all records from the table:")
+            cursor.execute("SELECT * FROM sequence_metrics")
+            rows = cursor.fetchall()
+            for row in rows:
+                print(row)
+
+        conn.close()
+        print("🔒 Connection closed.")
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'message': 'Records processed and stored successfully ✅',
+                'file': filename,
+                'record_count': len(records)
+            })
+        }
+
+    except Exception as e:
+        print(f"❌ Exception occurred: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }

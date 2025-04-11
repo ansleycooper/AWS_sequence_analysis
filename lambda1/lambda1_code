@@ -4,12 +4,10 @@ import boto3
 s3 = boto3.client("s3")
 lambda_client = boto3.client("lambda")
 
-
-# CHANGE THESE TO FIT YOUR PIPELINE
-DEST_BUCKET = "25s-ds4300-bucket-cooper-processed"  
+DEST_BUCKET = "25s-ds4300-bucket-cooper-processed"
 SECOND_LAMBDA = "ds4300-rds-inclass"
 
-def parse_fasta(content):   # COURTESY OF BINF 6310
+def parse_fasta(content):    # COURTESY OF BINF6310
     """
     Parses a FASTA formatted string and returns a list of dicts:
     [
@@ -39,7 +37,7 @@ def parse_fasta(content):   # COURTESY OF BINF 6310
 
 def store_individual_fastas(records, original_filename):
     for idx, record in enumerate(records, start=1):
-        header = record["header"].replace(" ", "_")[:50]  # clean/safe name
+        header = record["header"].replace(" ", "_")[:50]  
         file_key = f"{original_filename}_seq{idx}.fasta"
         fasta_str = f">{header}\n{record['sequence']}\n"
 
@@ -49,23 +47,23 @@ def store_individual_fastas(records, original_filename):
                 Key=file_key,
                 Body=fasta_str.encode("utf-8")
             )
-            print(f"Stored: {file_key}")
+            print(f"📤 Stored: {file_key}")
         except Exception as e:
             print(f"❌ Failed to store {file_key}:", e)
 
 def lambda_handler(event, context):
-    print("Lambda 1 triggered!")
+    print("🚀 Lambda 1 triggered!")
 
-    # Parse S3 info from the event
+    # S3 info from the event
     try:
         bucket = event['Records'][0]['s3']['bucket']['name']
         key = event['Records'][0]['s3']['object']['key']
-        print(f"S3 Bucket: {bucket}, Key: {key}")
+        print(f"📦 S3 Bucket: {bucket}, Key: {key}")
     except Exception as e:
         print("❌ Error parsing S3 event:", e)
         return {"statusCode": 400, "body": "Invalid S3 event."}
 
-    #Read the FASTA file from S3
+    # read the FASTA file from S3
     try:
         obj = s3.get_object(Bucket=bucket, Key=key)
         fasta_content = obj['Body'].read().decode('utf-8')
@@ -74,7 +72,7 @@ def lambda_handler(event, context):
         print("❌ Failed to read from S3:", e)
         return {"statusCode": 500, "body": "Error reading S3 object."}
 
-    #Parse the FASTA content into JSON
+    # parse the FASTA content into JSON
     try:
         fasta_json = parse_fasta(fasta_content)
         print(f"Parsed {len(fasta_json)} FASTA records.")
@@ -82,13 +80,13 @@ def lambda_handler(event, context):
         print("❌ FASTA parsing failed:", e)
         return {"statusCode": 500, "body": "Error parsing FASTA."}
 
-    # Store each FASTA as an individual file
+    # sore each FASTA as an individual file
     try:
         store_individual_fastas(fasta_json, original_filename=key)
     except Exception as e:
         print("❌ Failed storing individual FASTAs:", e)
 
-    # Send to Lambda 2
+    # send to Lambda 2
     try:
         response = lambda_client.invoke(
             FunctionName= SECOND_LAMBDA,
