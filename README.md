@@ -19,7 +19,8 @@ there is a SAM in the rept names lambda1. be careful if using this, as the enpoi
 2) connect it to the buckets like we did in class. (there are two, the input and the output) make these *two diffrent buckets*
    2a) either leave the suffix *blank* or add *.fasta* the default we did in class only takes csvs
 3) in permissions: click on the role in "Execution role." Add Permissions > "Add Inline Policy" > JSON
-4) Copy paste this: 
+4) Copy paste this:
+```python
 {
 	"Version": "2012-10-17",
 	"Statement": [
@@ -35,14 +36,16 @@ there is a SAM in the rept names lambda1. be careful if using this, as the enpoi
 		}
 	]
 }
-5) change the name of the resource to the endpoint of lambda2. Mine is called ds4300-rds-inclass.
-6) copy paste the code in this repo under lambda1 into the code section. DO NOT FORGET TO CHANGE THE GLOBAL VARS
+```
+6) change the name of the resource to the endpoint of lambda2. Mine is called ds4300-rds-inclass.
+7) copy paste the code in this repo under lambda1 into the code section. DO NOT FORGET TO CHANGE THE GLOBAL VARS
 
 ### Lambda 2 setup:
 there is a SAM in the rept names lambda2. be careful if using this, as the enpoints (s3 bucket and other lambda are hard coded into it)
 ###### If you want to do this from scratch
 1) If you have the lambda-rds created from class. all you need to do is:
 2) ensure that you have
+```python
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -53,10 +56,12 @@ there is a SAM in the rept names lambda2. be careful if using this, as the enpoi
         }
     ]
 }
+```
 you should have this from connecting the RDS database
-3) copy paste the code form lambda2 into the code section BE SURE TO SET THE GLOBAL VARIABLES
+4) copy paste the code form lambda2 into the code section BE SURE TO SET THE GLOBAL VARIABLES
 I included the test file that I used to ensure that this all works.
 
+```python
 Here is the format that the data is in the RDS
 id	sample_name	adenine_pct	guanine_pct	cytosine_pct	thymine_pct	gc_content	melting_temp	length	molecular_weight
 1	sampled sequence 1 consisting of 100 bases.	77.0	0.0	0.0	23.0	0.0	200	100	33000
@@ -64,7 +69,7 @@ id	sample_name	adenine_pct	guanine_pct	cytosine_pct	thymine_pct	gc_content	melti
 3	sampled sequence 3 consisting of 150 bases.	50.0	30.0	10.0	10.0	40.0	230	150	49500
 4	sampled sequence 4 consisting of 120 bases.	65.0	15.0	10.0	10.0	25.0	210	120	39600
 5	sampled sequence 5 consisting of 180 bases.	70.0	10.0	10.0	10.0	20.0	250	180	59400
-
+```
 
 
 
